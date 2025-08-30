@@ -122,6 +122,7 @@ from open_webui.config import (
     THREAD_POOL_SIZE,
     # Tool Server Configs
     TOOL_SERVER_CONNECTIONS,
+    MCP_SERVER_CONNECTIONS,
     # Code Execution
     ENABLE_CODE_EXECUTION,
     CODE_EXECUTION_ENGINE,
@@ -633,6 +634,15 @@ app.state.OPENAI_MODELS = {}
 
 app.state.config.TOOL_SERVER_CONNECTIONS = TOOL_SERVER_CONNECTIONS
 app.state.TOOL_SERVERS = []
+
+########################################
+#
+# MCP SERVERS
+#
+########################################
+
+app.state.config.MCP_SERVER_CONNECTIONS = MCP_SERVER_CONNECTIONS
+app.state.MCP_SERVERS = []
 
 ########################################
 #

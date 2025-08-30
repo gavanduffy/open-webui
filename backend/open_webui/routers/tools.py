@@ -23,6 +23,7 @@ from open_webui.utils.access_control import has_access, has_permission
 from open_webui.env import SRC_LOG_LEVELS
 
 from open_webui.utils.tools import get_tool_servers_data
+from open_webui.utils.mcp import get_mcp_servers_data
 
 
 log = logging.getLogger(__name__)
@@ -48,6 +49,11 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             request.app.state.config.TOOL_SERVER_CONNECTIONS
         )
 
+    if not request.app.state.MCP_SERVERS:
+        request.app.state.MCP_SERVERS = await get_mcp_servers_data(
+            request.app.state.config.MCP_SERVER_CONNECTIONS
+        )
+
     tools = Tools.get_tools()
     for server in request.app.state.TOOL_SERVERS:
         tools.append(
@@ -64,6 +70,27 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
                         .get("description", ""),
                     },
                     "access_control": request.app.state.config.TOOL_SERVER_CONNECTIONS[
+                        server["idx"]
+                    ]
+                    .get("config", {})
+                    .get("access_control", None),
+                    "updated_at": int(time.time()),
+                    "created_at": int(time.time()),
+                }
+            )
+        )
+
+    for server in request.app.state.MCP_SERVERS:
+        tools.append(
+            ToolUserResponse(
+                **{
+                    "id": f"mcp:{server['idx']}",
+                    "user_id": f"mcp:{server['idx']}",
+                    "name": server.get("info", {}).get("name", "MCP Server"),
+                    "meta": {
+                        "description": server.get("info", {}).get("description", ""),
+                    },
+                    "access_control": request.app.state.config.MCP_SERVER_CONNECTIONS[
                         server["idx"]
                     ]
                     .get("config", {})

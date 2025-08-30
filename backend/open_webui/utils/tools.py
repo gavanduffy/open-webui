@@ -41,6 +41,7 @@ from open_webui.env import (
     AIOHTTP_CLIENT_TIMEOUT_TOOL_SERVER_DATA,
     AIOHTTP_CLIENT_SESSION_TOOL_SERVER_SSL,
 )
+from open_webui.utils.mcp import execute_mcp_server
 
 import copy
 
@@ -135,7 +136,66 @@ def get_tools(
                     else:
                         tools_dict[function_name] = tool_dict
             else:
-                continue
+                if tool_id.startswith("mcp:"):
+                    server_idx = int(tool_id.split(":")[1])
+                    mcp_connection = request.app.state.config.MCP_SERVER_CONNECTIONS[
+                        server_idx
+                    ]
+                    mcp_server_data = None
+                    for server in request.app.state.MCP_SERVERS:
+                        if server["idx"] == server_idx:
+                            mcp_server_data = server
+                            break
+                    assert mcp_server_data is not None
+                    specs = mcp_server_data.get("tools", [])
+                    allowed = mcp_connection.get("allowed_tools", []) or []
+
+                    for spec in specs:
+                        function_name = spec.get("name")
+                        if allowed and function_name not in allowed:
+                            continue
+
+                        token = mcp_connection.get("key")
+
+                        def make_mcp_tool(function_name, token, server_data, conn_type):
+                            async def tool_function(**kwargs):
+                                return await execute_mcp_server(
+                                    token=token,
+                                    url=server_data["url"],
+                                    name=function_name,
+                                    params=kwargs,
+                                    connection_type=conn_type,
+                                )
+
+                            return tool_function
+
+                        tool_function = make_mcp_tool(
+                            function_name,
+                            token,
+                            mcp_server_data,
+                            mcp_connection.get("type", "http"),
+                        )
+
+                        callable = get_async_tool_function_and_apply_extra_params(
+                            tool_function,
+                            {},
+                        )
+
+                        tool_dict = {
+                            "tool_id": tool_id,
+                            "callable": callable,
+                            "spec": spec,
+                        }
+
+                        if function_name in tools_dict:
+                            log.warning(
+                                f"Tool {function_name} already exists in another tools!"
+                            )
+                            log.warning(f"Discarding {tool_id}.{function_name}")
+                        else:
+                            tools_dict[function_name] = tool_dict
+                else:
+                    continue
         else:
             module = request.app.state.TOOLS.get(tool_id, None)
             if module is None:

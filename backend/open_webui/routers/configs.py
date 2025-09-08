@@ -12,6 +12,7 @@ from open_webui.utils.tools import (
     get_tool_server_url,
     set_tool_servers,
 )
+from open_webui.utils.mcp import fetch_mcp_tools
 
 
 router = APIRouter()
@@ -142,6 +143,67 @@ async def verify_tool_servers_config(
         raise HTTPException(
             status_code=400,
             detail=f"Failed to connect to the tool server: {str(e)}",
+        )
+
+
+############################
+# MCPServers Config
+############################
+
+
+class MCPServerConnection(BaseModel):
+    name: str
+    url: str
+    type: str = "sse"
+    tools: Optional[list[str]] = None
+    auth_type: Optional[str]
+    key: Optional[str]
+    config: Optional[dict]
+
+    model_config = ConfigDict(extra="allow")
+
+
+class MCPServersConfigForm(BaseModel):
+    MCP_SERVER_CONNECTIONS: list[MCPServerConnection]
+
+
+@router.get("/mcp_servers", response_model=MCPServersConfigForm)
+async def get_mcp_servers_config(request: Request, user=Depends(get_admin_user)):
+    return {
+        "MCP_SERVER_CONNECTIONS": request.app.state.config.MCP_SERVER_CONNECTIONS,
+    }
+
+
+@router.post("/mcp_servers", response_model=MCPServersConfigForm)
+async def set_mcp_servers_config(
+    request: Request,
+    form_data: MCPServersConfigForm,
+    user=Depends(get_admin_user),
+):
+    request.app.state.config.MCP_SERVER_CONNECTIONS = [
+        connection.model_dump() for connection in form_data.MCP_SERVER_CONNECTIONS
+    ]
+    return {
+        "MCP_SERVER_CONNECTIONS": request.app.state.config.MCP_SERVER_CONNECTIONS,
+    }
+
+
+@router.post("/mcp_servers/verify")
+async def verify_mcp_server_config(
+    request: Request, form_data: MCPServerConnection, user=Depends(get_admin_user)
+):
+    try:
+        token = None
+        if form_data.auth_type == "bearer":
+            token = form_data.key
+        elif form_data.auth_type == "session":
+            token = request.state.token.credentials
+
+        tools = await fetch_mcp_tools(form_data.url, form_data.type, token)
+        return {"tools": tools}
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Failed to connect to the MCP server: {str(e)}"
         )
 
 

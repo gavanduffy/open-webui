@@ -19,10 +19,12 @@
 	import WebSearch from './Settings/WebSearch.svelte';
 
 	import ChartBar from '../icons/ChartBar.svelte';
-	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
-	import Evaluations from './Settings/Evaluations.svelte';
-	import CodeExecution from './Settings/CodeExecution.svelte';
-	import Tools from './Settings/Tools.svelte';
+        import DocumentChartBar from '../icons/DocumentChartBar.svelte';
+        import GlobeAlt from '../icons/GlobeAlt.svelte';
+        import Evaluations from './Settings/Evaluations.svelte';
+        import CodeExecution from './Settings/CodeExecution.svelte';
+        import Tools from './Settings/Tools.svelte';
+        import MCP from './Settings/MCP.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -36,9 +38,10 @@
 			'general',
 			'connections',
 			'models',
-			'evaluations',
-			'tools',
-			'documents',
+                        'evaluations',
+                        'tools',
+                        'mcp',
+                        'documents',
 			'web',
 			'code-execution',
 			'interface',
@@ -204,11 +207,24 @@
 					/>
 				</svg>
 			</div>
-			<div class=" self-center">{$i18n.t('Tools')}</div>
-		</button>
+                        <div class=" self-center">{$i18n.t('Tools')}</div>
+                </button>
 
-		<button
-			id="documents"
+                <button
+                        id="mcp"
+                        class="px-0.5 py-1 min-w-fit rounded-lg flex-1 md:flex-none flex text-left transition {selectedTab === 'mcp' ? '' : ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
+                        on:click={() => {
+                                goto('/admin/settings/mcp');
+                        }}
+                >
+                        <div class=" self-center mr-2">
+                                <GlobeAlt />
+                        </div>
+                        <div class=" self-center">{$i18n.t('MCP')}</div>
+                </button>
+
+                <button
+                        id="documents"
 			class="px-0.5 py-1 min-w-fit rounded-lg flex-1 md:flex-none flex text-left transition {selectedTab ===
 			'documents'
 				? ''
@@ -453,11 +469,17 @@
 			<Models />
 		{:else if selectedTab === 'evaluations'}
 			<Evaluations />
-		{:else if selectedTab === 'tools'}
-			<Tools />
-		{:else if selectedTab === 'documents'}
-			<Documents
-				on:save={async () => {
+                {:else if selectedTab === 'tools'}
+                        <Tools />
+                {:else if selectedTab === 'mcp'}
+                        <MCP
+                                on:save={() => {
+                                        toast.success($i18n.t('Settings saved successfully!'));
+                                }}
+                        />
+                {:else if selectedTab === 'documents'}
+                        <Documents
+                                on:save={async () => {
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();

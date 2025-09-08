@@ -43,6 +43,7 @@ from open_webui.env import (
     AIOHTTP_CLIENT_TIMEOUT_TOOL_SERVER_DATA,
     AIOHTTP_CLIENT_SESSION_TOOL_SERVER_SSL,
 )
+from open_webui.utils.mcp import execute_mcp_tool
 
 import copy
 
@@ -162,6 +163,45 @@ async def get_tools(
                         function_name = f"{server_id}_{function_name}"
 
                     tools_dict[function_name] = tool_dict
+            elif tool_id.startswith("mcp:"):
+                parts = tool_id.split(":")
+                server_idx = int(parts[1]) if len(parts) > 2 else 0
+                tool_name = ":".join(parts[2:]) if len(parts) > 2 else ""
+                try:
+                    server = request.app.state.config.MCP_SERVER_CONNECTIONS[server_idx]
+                except Exception:
+                    continue
+
+                url = server.get("url")
+                server_type = server.get("type", "sse")
+                auth_type = server.get("auth_type", "bearer")
+                token = None
+                if auth_type == "bearer":
+                    token = server.get("key", "")
+                elif auth_type == "session":
+                    token = request.state.token.credentials
+
+                async def tool_function(**kwargs):
+                    return await execute_mcp_tool(url, server_type, tool_name, kwargs, token)
+
+                callable = get_async_tool_function_and_apply_extra_params(
+                    tool_function, {}
+                )
+
+                spec = {
+                    "name": tool_name,
+                    "description": tool_name,
+                    "parameters": {"type": "object", "properties": {}},
+                }
+
+                function_name = tool_name
+                while function_name in tools_dict:
+                    function_name = f"{server_idx}_{function_name}"
+                tools_dict[function_name] = {
+                    "tool_id": tool_id,
+                    "callable": callable,
+                    "spec": spec,
+                }
             else:
                 continue
         else:

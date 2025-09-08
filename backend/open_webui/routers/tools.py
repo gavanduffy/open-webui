@@ -67,6 +67,25 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             )
         )
 
+    for idx, server in enumerate(request.app.state.config.MCP_SERVER_CONNECTIONS):
+        allowed = server.get("tools", []) or []
+        for tool in allowed:
+            tools.append(
+                ToolUserResponse(
+                    **{
+                        "id": f"mcp:{idx}:{tool}",
+                        "user_id": f"mcp:{idx}",
+                        "name": tool,
+                        "meta": {"description": "MCP tool"},
+                        "access_control": server.get("config", {}).get(
+                            "access_control", None
+                        ),
+                        "updated_at": int(time.time()),
+                        "created_at": int(time.time()),
+                    }
+                )
+            )
+
     if user.role == "admin" and BYPASS_ADMIN_ACCESS_CONTROL:
         # Admin can see all tools
         return tools
